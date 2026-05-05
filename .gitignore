@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.observablehq/cache/
+src/.observablehq/cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
