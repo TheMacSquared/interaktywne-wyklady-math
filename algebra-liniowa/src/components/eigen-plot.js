@@ -156,15 +156,10 @@ export function eigenPlot(A, {width = 420} = {}) {
     const u = [v[0] / norm * 1.4, v[1] / norm * 1.4]; // wersor × 1.4 dla widoczności
     const Av = [u[0] * d.re, u[1] * d.re];
 
-    // Wektor wyjściowy (czarny)
     arrows.push({x1: 0, y1: 0, x2: u[0], y2: u[1], kind: "v", i});
-    // Wektor po transformacji (czerwony jeśli rośnie, niebieski jeśli maleje, fiolet jeśli odbija)
     arrows.push({x1: 0, y1: 0, x2: Av[0], y2: Av[1], kind: "Av", i});
 
-    labels.push({
-      x: u[0] * 1.08, y: u[1] * 1.08,
-      text: `v${subscript(i + 1)}`, color: "#000"
-    });
+    labels.push({x: u[0] * 1.08, y: u[1] * 1.08, text: `v${subscript(i + 1)}`, color: "#000"});
     labels.push({
       x: Av[0] * 1.08, y: Av[1] * 1.08,
       text: `λ${subscript(i + 1)}·v${subscript(i + 1)}`,
@@ -172,7 +167,7 @@ export function eigenPlot(A, {width = 420} = {}) {
     });
   });
 
-  return Plot.plot({
+  const plot = Plot.plot({
     width,
     height: width,
     aspectRatio: 1,
@@ -183,12 +178,10 @@ export function eigenPlot(A, {width = 420} = {}) {
       Plot.gridY({stroke: "#e2e8f0"}),
       Plot.ruleX([0], {stroke: "#94a3b8"}),
       Plot.ruleY([0], {stroke: "#94a3b8"}),
-      // Wektory własne — wyjściowe (czarne)
       Plot.arrow(arrows.filter(a => a.kind === "v"), {
         x1: "x1", y1: "y1", x2: "x2", y2: "y2",
         stroke: "#0f172a", strokeWidth: 2, headLength: 10
       }),
-      // Wektory po transformacji (skalowane przez λ)
       Plot.arrow(arrows.filter(a => a.kind === "Av"), {
         x1: "x1", y1: "y1", x2: "x2", y2: "y2",
         stroke: d => arrowColor(values[d.i].re),
@@ -200,6 +193,23 @@ export function eigenPlot(A, {width = 420} = {}) {
       })
     ]
   });
+
+  // Wykryj przypadek gdy oba wektory własne leżą na tym samym kierunku.
+  const vecs = values.filter(d => d.vector);
+  let caption = "Czarne strzałki (v₁, v₂): wektory własne. Kolorowe (λ·v): obrazy po transformacji.";
+  if (vecs.length === 2) {
+    const [v1, v2] = vecs.map(d => d.vector);
+    const cross = v1[0] * v2[1] - v1[1] * v2[0];
+    if (Math.abs(cross) < 1e-6) {
+      const λ = vecs[0].re.toFixed(3).replace(/\.?0+$/, "");
+      caption = `Widzimy tylko jeden kierunek własny — obie strzałki leżą na tej samej prostej (λ₁ = λ₂ = ${λ}).`;
+    }
+  }
+
+  return html`<div>
+    ${plot}
+    <p style="color:#475569; font-style:italic; margin:.4rem 0 0; font-size:.875rem;">${caption}</p>
+  </div>`;
 }
 
 function arrowColor(λ) {
@@ -213,47 +223,151 @@ function subscript(n) {
 }
 
 function rotationHint(A, values, width) {
-  // Przybliżony kąt obrotu = arg(λ).
+  // Kąt obrotu = arg(λ), moduł skalowania = |λ|.
   const θ = Math.atan2(values[0].im, values[0].re);
   const θdeg = (θ * 180 / Math.PI).toFixed(1);
+  const modulus = Math.hypot(values[0].re, values[0].im);
 
-  // Łuk od (1,0) o kąt θ na okręgu o promieniu 1.4.
-  const r = 1.4;
+  const r = 1.4;                        // długość wektora wyjściowego
+  const rEnd = r * modulus;             // długość wektora po transformacji
+  const plotRange = Math.max(RANGE, rEnd + 0.5);
+
+  // Łuk kąta obrotu (przy stałym promieniu r — pokazuje sam kąt).
   const N = 64;
   const arc = Array.from({length: N + 1}, (_, i) => {
     const t = (θ * i) / N;
     return {x: r * Math.cos(t), y: r * Math.sin(t)};
   });
 
+  // Okrąg przy promieniu r (oryginalna długość wektora).
+  const circle = Array.from({length: 97}, (_, i) => {
+    const φ = (2 * Math.PI * i) / 96;
+    return {x: r * Math.cos(φ), y: r * Math.sin(φ)};
+  });
+
+  const scalesLabel = Math.abs(modulus - 1) > 0.01
+    ? `,  |λ| ≈ ${modulus.toFixed(2)}`
+    : "";
+
+  const marks = [
+    Plot.gridX({stroke: "#e2e8f0"}),
+    Plot.gridY({stroke: "#e2e8f0"}),
+    Plot.ruleX([0], {stroke: "#94a3b8"}),
+    Plot.ruleY([0], {stroke: "#94a3b8"}),
+    // Okrąg oryginalnej długości wektora (szary przerywany)
+    Plot.line(circle, {x: "x", y: "y", stroke: "#cbd5e1", strokeDasharray: "3,3", strokeWidth: 1.2}),
+    // Łuk kąta obrotu przy promieniu r (szary)
+    Plot.line(arc, {x: "x", y: "y", stroke: "#94a3b8", strokeDasharray: "4,2", strokeWidth: 1.5}),
+    // Wektor wyjściowy (szary)
+    Plot.arrow([{x1: 0, y1: 0, x2: r, y2: 0}], {
+      x1: "x1", y1: "y1", x2: "x2", y2: "y2",
+      stroke: "#475569", strokeWidth: 1.5, headLength: 8
+    }),
+    // Wektor po transformacji: obrót o θ + skalowanie o |λ| (pomarańczowy)
+    Plot.arrow([{x1: 0, y1: 0, x2: rEnd * Math.cos(θ), y2: rEnd * Math.sin(θ)}], {
+      x1: "x1", y1: "y1", x2: "x2", y2: "y2",
+      stroke: "#ea580c", strokeWidth: 2, headLength: 10
+    }),
+    Plot.text([{x: 0, y: -plotRange + 0.4, text: `obrót ≈ ${θdeg}°${scalesLabel}`}], {
+      x: "x", y: "y", text: "text",
+      fontSize: 14, fontWeight: 600, fill: "#ea580c"
+    })
+  ];
+
+  // Gdy |λ| ≠ 1: dodaj pomarańczowy okrąg na nowej długości
+  if (Math.abs(modulus - 1) > 0.01) {
+    const circleEnd = Array.from({length: 97}, (_, i) => {
+      const φ = (2 * Math.PI * i) / 96;
+      return {x: rEnd * Math.cos(φ), y: rEnd * Math.sin(φ)};
+    });
+    marks.push(Plot.line(circleEnd, {
+      x: "x", y: "y",
+      stroke: "#ea580c", strokeDasharray: "3,3", strokeWidth: 1.2, strokeOpacity: 0.6
+    }));
+  }
+
   return html`<div>
     ${Plot.plot({
       width,
       height: width,
       aspectRatio: 1,
-      x: {domain: [-RANGE, RANGE], label: "x"},
-      y: {domain: [-RANGE, RANGE], label: "y"},
-      marks: [
-        Plot.gridX({stroke: "#e2e8f0"}),
-        Plot.gridY({stroke: "#e2e8f0"}),
-        Plot.ruleX([0], {stroke: "#94a3b8"}),
-        Plot.ruleY([0], {stroke: "#94a3b8"}),
-        Plot.line(arc, {x: "x", y: "y", stroke: "#ea580c", strokeWidth: 2.5}),
-        Plot.arrow([{x1: 0, y1: 0, x2: r, y2: 0}], {
-          x1: "x1", y1: "y1", x2: "x2", y2: "y2",
-          stroke: "#475569", strokeWidth: 1.5, headLength: 8
-        }),
-        Plot.arrow([{x1: 0, y1: 0, x2: r * Math.cos(θ), y2: r * Math.sin(θ)}], {
-          x1: "x1", y1: "y1", x2: "x2", y2: "y2",
-          stroke: "#ea580c", strokeWidth: 2, headLength: 10
-        }),
-        Plot.text([{x: 0, y: -RANGE + 0.4, text: `obrót ≈ ${θdeg}°`}], {
-          x: "x", y: "y", text: "text",
-          fontSize: 14, fontWeight: 600, fill: "#ea580c"
-        })
-      ]
+      x: {domain: [-plotRange, plotRange], label: "x"},
+      y: {domain: [-plotRange, plotRange], label: "y"},
+      marks
     })}
-    <div style="text-align:center; color:#475569; font-style:italic; margin-top:.4rem;">
-      Macierz nie ma rzeczywistych wektorów własnych — obraca przestrzeń.
-    </div>
+    <p style="color:#475569; font-style:italic; margin:.4rem 0 0; font-size:.875rem;">
+      Brak rzeczywistych wektorów własnych — macierz obraca przestrzeń${Math.abs(modulus - 1) > 0.01 ? " i skaluje wektory" : ""}.
+      Szara strzałka: wektor przed transformacją. Pomarańczowa: ten sam wektor po.
+    </p>
   </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PANEL FIGURY: wybrana figura geometryczna przed transformacją i po.
+
+function getShapeData(shape) {
+  switch (shape) {
+    case "square":
+      return {
+        line: [[1,1],[-1,1],[-1,-1],[1,-1],[1,1]],
+        verts: [[1,1],[-1,1],[-1,-1],[1,-1]]
+      };
+    case "triangle":
+      return {
+        line: [[0,0],[1,0],[0,1],[0,0]],
+        verts: [[0,0],[1,0],[0,1]]
+      };
+    case "segment":
+      return {
+        line: [[-1,0],[1,0]],
+        verts: [[-1,0],[1,0]]
+      };
+    case "circle": {
+      const N = 96;
+      return {
+        line: Array.from({length: N + 1}, (_, i) => {
+          const θ = (2 * Math.PI * i) / N;
+          return [Math.cos(θ), Math.sin(θ)];
+        }),
+        verts: []
+      };
+    }
+    default:
+      return {line: [], verts: []};
+  }
+}
+
+export function shapePlot(A, t = 1, shape = "square", {width = 420} = {}) {
+  const M = interpolate(A, t);
+  const {line, verts} = getShapeData(shape);
+
+  const origLine  = line.map(([x, y]) => ({x, y}));
+  const transLine = line.map(([x, y]) => { const [tx, ty] = apply(M, [x, y]); return {x: tx, y: ty}; });
+  const origVerts  = verts.map(([x, y]) => ({x, y}));
+  const transVerts = verts.map(([x, y]) => { const [tx, ty] = apply(M, [x, y]); return {x: tx, y: ty}; });
+
+  const marks = [
+    Plot.gridX({stroke: "#e2e8f0"}),
+    Plot.gridY({stroke: "#e2e8f0"}),
+    Plot.ruleX([0], {stroke: "#94a3b8"}),
+    Plot.ruleY([0], {stroke: "#94a3b8"}),
+    // Oryginalna figura — szara przerywana
+    Plot.line(origLine, {x: "x", y: "y", stroke: "#94a3b8", strokeWidth: 1.5, strokeDasharray: "5,3"}),
+    // Figura po transformacji — niebieska
+    Plot.line(transLine, {x: "x", y: "y", stroke: "#2563eb", strokeWidth: 2.2})
+  ];
+
+  if (origVerts.length > 0) {
+    marks.push(Plot.dot(origVerts,  {x: "x", y: "y", fill: "#94a3b8", r: 3}));
+    marks.push(Plot.dot(transVerts, {x: "x", y: "y", fill: "#2563eb", r: 4}));
+  }
+
+  return Plot.plot({
+    width,
+    height: width,
+    aspectRatio: 1,
+    x: {domain: [-RANGE, RANGE], label: "x"},
+    y: {domain: [-RANGE, RANGE], label: "y"},
+    marks
+  });
 }

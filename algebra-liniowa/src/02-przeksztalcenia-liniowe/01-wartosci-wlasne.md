@@ -16,14 +16,14 @@ Pobaw się wpisami macierzy poniżej i zobacz, jak transformacja siatki (lewy pa
 
 ```js
 import {matrixInput, examples} from "../components/matrix-input.js";
-import {transformPlot, eigenPlot, computeEigen} from "../components/eigen-plot.js";
+import {transformPlot, eigenPlot, computeEigen, shapePlot} from "../components/eigen-plot.js";
 import * as math from "npm:mathjs";
 ```
 
 ## Sterowanie
 
 ```js
-const matrixView = matrixInput({label: "Macierz A (2×2)", initial: examples.symmetric});
+const matrixView = matrixInput({label: "Macierz A (2×2)", initial: examples.identity});
 const A = Generators.input(matrixView);
 ```
 
@@ -74,7 +74,7 @@ const preset = Generators.input(presetView);
   };
   if (preset !== "własny wybór" && map[preset]) {
     const M = map[preset];
-    const sliders = matrixView.querySelectorAll('input[type="range"]');
+    const sliders = matrixView.querySelectorAll('input[type="number"]');
     if (sliders.length === 4) {
       sliders[0].value = M[0][0]; sliders[1].value = M[0][1];
       sliders[2].value = M[1][0]; sliders[3].value = M[1][1];
@@ -92,19 +92,111 @@ const preset = Generators.input(presetView);
   <div style="margin-top:.6rem;">${presetView}</div>
 </div>
 
-<div class="card" style="margin-top: 1rem;">
-  <h3>Transformacja siatki</h3>
-  ${display(transformPlot(A, t))}
-</div>
-
-<div class="card" style="margin-top: 1rem;">
-  <h3>Wektory własne</h3>
-  ${display(eigenPlot(A))}
+<div class="grid grid-cols-2" style="margin-top: 1rem;">
+  <div class="card" style="min-width: 0; overflow: hidden;">
+    <h3>Transformacja siatki</h3>
+    ${display(resize((width) => transformPlot(A, t, {width})))}
+  </div>
+  <div class="card" style="min-width: 0; overflow: hidden;">
+    <h3>Wektory własne</h3>
+    ${display(resize((width) => eigenPlot(A, {width})))}
+  </div>
 </div>
 
 <div class="card" style="margin-top: 1rem;">
   <h3>Wartości własne — liczby</h3>
   ${eigenSummary(A)}
+</div>
+
+## Przekształcenie figury
+
+```js
+const sMatrixView = matrixInput({label: "Macierz B (2×2)", initial: examples.identity});
+const sA = Generators.input(sMatrixView);
+```
+
+```js
+const sTView = Inputs.range([0, 1], {value: 1, step: 0.01, label: "Stopień transformacji t"});
+const sT = Generators.input(sTView);
+```
+
+```js
+const sAnimateBtn = Inputs.button("Uruchom animację", {
+  reduce: () => {
+    let start = null;
+    const duration = 1500;
+    function step(ts) {
+      if (start === null) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      sTView.value = p;
+      sTView.dispatchEvent(new Event("input", {bubbles: true}));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    sTView.value = 0;
+    sTView.dispatchEvent(new Event("input", {bubbles: true}));
+    requestAnimationFrame(step);
+    return Date.now();
+  }
+});
+```
+
+```js
+const sPresetView = Inputs.select(
+  ["własny wybór", "tożsamość", "skalowanie 2×, 0.5×", "ścinanie", "obrót 30°", "odbicie", "symetryczna", "wadliwa"],
+  {label: "Przykład"}
+);
+const sPreset = Generators.input(sPresetView);
+```
+
+```js
+{
+  const map = {
+    "tożsamość": examples.identity,
+    "skalowanie 2×, 0.5×": examples.scaling,
+    "ścinanie": examples.shear,
+    "obrót 30°": examples.rotation30,
+    "odbicie": examples.reflection,
+    "symetryczna": examples.symmetric,
+    "wadliwa": examples.defective
+  };
+  if (sPreset !== "własny wybór" && map[sPreset]) {
+    const M = map[sPreset];
+    const fields = sMatrixView.querySelectorAll('input[type="number"]');
+    if (fields.length === 4) {
+      fields[0].value = M[0][0]; fields[1].value = M[0][1];
+      fields[2].value = M[1][0]; fields[3].value = M[1][1];
+      fields.forEach(f => f.dispatchEvent(new Event("input", {bubbles: true})));
+    }
+  }
+}
+```
+
+```js
+const shapeView = Inputs.select(
+  ["square", "triangle", "segment", "circle"],
+  {
+    label: "Figura",
+    format: x => ({square: "Kwadrat [−1,1]²", triangle: "Trójkąt", segment: "Odcinek", circle: "Koło jednostkowe"})[x]
+  }
+);
+const shape = Generators.input(shapeView);
+```
+
+<div class="card">
+  <h3>Sterowanie</h3>
+  ${sMatrixView}
+  <div style="margin-top:.6rem;">${sTView}</div>
+  <div style="margin-top:.4rem;">${sAnimateBtn}</div>
+  <div style="margin-top:.6rem;">${sPresetView}</div>
+  <div style="margin-top:.6rem;">${shapeView}</div>
+</div>
+
+<div class="card" style="margin-top:1rem; min-width:0; overflow:hidden;">
+  <h3>Przekształcenie figury</h3>
+  ${display(resize((width) => shapePlot(sA, sT, shape, {width})))}
+  <p style="color:#475569; font-style:italic; margin:.4rem 0 0; font-size:.875rem;">
+    Szara przerywana: figura oryginalna. Niebieska: obraz po transformacji macierzą B (przy stopniu t).
+  </p>
 </div>
 
 ```js

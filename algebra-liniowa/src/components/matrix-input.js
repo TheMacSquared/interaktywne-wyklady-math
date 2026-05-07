@@ -1,44 +1,90 @@
-// Widget: cztery suwaki dla wpisów macierzy 2x2.
-// Zwraca element DOM (formularz Observable Inputs), którego wartością jest [[a,b],[c,d]].
+// Widget: cztery pola liczbowe dla wpisów macierzy 2x2.
+// Zwraca element DOM, którego wartością jest [[a,b],[c,d]].
+// Pola nie mają ograniczenia zakresu — można wpisać dowolną liczbę.
 
-import * as Inputs from "npm:@observablehq/inputs";
 import {html} from "npm:htl";
 
 export function matrixInput({
   label = "Macierz A",
   initial = [[1, 0], [0, 1]],
-  min = -3,
-  max = 3,
   step = 0.1
 } = {}) {
-  const opts = {min, max, step};
-  const inputs = {
-    a: Inputs.range([min, max], {...opts, value: initial[0][0], label: "a (1,1)"}),
-    b: Inputs.range([min, max], {...opts, value: initial[0][1], label: "b (1,2)"}),
-    c: Inputs.range([min, max], {...opts, value: initial[1][0], label: "c (2,1)"}),
-    d: Inputs.range([min, max], {...opts, value: initial[1][1], label: "d (2,2)"})
-  };
+  const entries = [
+    {name: "a", label: "a₁₁", value: initial[0][0]},
+    {name: "b", label: "a₁₂", value: initial[0][1]},
+    {name: "c", label: "a₂₁", value: initial[1][0]},
+    {name: "d", label: "a₂₂", value: initial[1][1]}
+  ];
 
-  const form = Inputs.form(inputs);
+  const cellStyle = "display:flex; flex-direction:column; gap:.2rem; font-size:.8125rem; color:#475569;";
+  const inputStyle = "width:100%; padding:.25rem .4rem; border:1px solid #cbd5e1; border-radius:.25rem; font-size:.875rem; background:#fff; box-sizing:border-box;";
 
-  // Mapuj {a,b,c,d} -> [[a,b],[c,d]]
   const wrapper = html`<div class="matrix-input">
-    <div style="font-weight:600; margin-bottom:.4rem;">${label}</div>
-    ${form}
+    <div style="font-weight:600; margin-bottom:.5rem;">${label}</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:.4rem .75rem; max-width:14rem;">
+      ${entries.map(e => html`<label style="${cellStyle}">
+        ${e.label}
+        <input type="number" name="${e.name}" value="${e.value}" step="${step}" style="${inputStyle}" onfocus="this.select()">
+      </label>`)}
+    </div>
   </div>`;
 
-  // Forward value getter/setter (reaktywność Observable)
   Object.defineProperty(wrapper, "value", {
     get() {
-      const v = form.value;
-      return [[v.a, v.b], [v.c, v.d]];
+      const g = name => +(wrapper.querySelector(`input[name="${name}"]`).value);
+      return [[g("a"), g("b")], [g("c"), g("d")]];
     }
   });
 
-  form.addEventListener("input", () => wrapper.dispatchEvent(new Event("input", {bubbles: true})));
+  return wrapper;
+}
+
+// Widget 3×3 — analogiczny do matrixInput, ale dla 9 wpisów.
+export function matrixInput3({
+  label = "Macierz A",
+  initial = [[1,0,0],[0,1,0],[0,0,1]],
+  step = 0.1
+} = {}) {
+  const names  = ["a11","a12","a13","a21","a22","a23","a31","a32","a33"];
+  const labels = ["a₁₁","a₁₂","a₁₃","a₂₁","a₂₂","a₂₃","a₃₁","a₃₂","a₃₃"];
+  const values = initial.flat();
+
+  const cellStyle  = "display:flex; flex-direction:column; gap:.15rem; font-size:.75rem; color:#475569;";
+  const inputStyle = "width:100%; padding:.2rem .3rem; border:1px solid #cbd5e1; border-radius:.25rem; font-size:.8rem; text-align:center; background:#fff; box-sizing:border-box;";
+
+  const wrapper = html`<div class="matrix-input">
+    <div style="font-weight:600; margin-bottom:.5rem;">${label}</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:.35rem; max-width:16rem;">
+      ${names.map((name, i) => html`<label style="${cellStyle}">
+        ${labels[i]}
+        <input type="number" name="${name}" value="${values[i]}" step="${step}" onfocus="this.select()" style="${inputStyle}">
+      </label>`)}
+    </div>
+  </div>`;
+
+  Object.defineProperty(wrapper, "value", {
+    get() {
+      const g = n => +(wrapper.querySelector(`input[name="${n}"]`).value);
+      return [
+        [g("a11"), g("a12"), g("a13")],
+        [g("a21"), g("a22"), g("a23")],
+        [g("a31"), g("a32"), g("a33")]
+      ];
+    }
+  });
 
   return wrapper;
 }
+
+// Predefiniowane przykłady 3×3.
+export const examples3 = {
+  identity3:   [[1,0,0],[0,1,0],[0,0,1]],
+  diagonal:    [[2,0,0],[0,3,0],[0,0,-1]],
+  scaling3:    [[2,0,0],[0,3,0],[0,0,5]],
+  upper:       [[2,1,3],[0,4,2],[0,0,5]],
+  singular:    [[1,2,3],[4,5,6],[7,8,9]],
+  general:     [[1,2,3],[0,1,4],[5,6,0]]
+};
 
 // Predefiniowane przykłady — ułatwiają rozmowę o przypadkach.
 export const examples = {
