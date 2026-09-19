@@ -38,12 +38,12 @@ export function refIntegral(expr, a, b) {
   return riemannSum(expr, a, b, 2000, "midpoint");
 }
 
-export function riemannPlot(expr, a, b, N, method, {width = 480} = {}) {
+export function riemannPlot(expr, a, b, N, method, {width = 480, fixedX = true} = {}) {
   const dx = (b - a) / N;
   const pad = (b - a) * 0.15;
-  const xMin = a - pad, xMax = b + pad;
+  const xMin = fixedX ? -5 : a - pad;
+  const xMax = fixedX ?  5 : b + pad;
 
-  // Próbkowanie krzywej
   const M = 400;
   const curve = Array.from({length: M}, (_, i) => {
     const x = xMin + (xMax - xMin) * i / (M - 1);
@@ -68,7 +68,7 @@ export function riemannPlot(expr, a, b, N, method, {width = 480} = {}) {
       x: a + i * dx,
       y: safeEval(expr, a + i * dx)
     }));
-    marks.push(Plot.area(trapPts, {
+    marks.push(Plot.areaY(trapPts, {
       x: "x", y: "y", y2: 0,
       fill: "#2563eb", fillOpacity: 0.25
     }));

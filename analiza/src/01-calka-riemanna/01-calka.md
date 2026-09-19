@@ -45,6 +45,11 @@ const method = Generators.input(methodView);
 ```
 
 ```js
+const fixedXView = Inputs.toggle({label: "Stały zakres osi X (−5 do 5)", value: true});
+const fixedX = Generators.input(fixedXView);
+```
+
+```js
 const presetView = Inputs.select(
   ["własna", "x² na [0,1]", "sin(x) na [0,π]", "√x na [0,4]", "1/x na [1,e]", "x²−x na [−1,2]"],
   {label: "Przykład"}
@@ -78,12 +83,13 @@ const preset = Generators.input(presetView);
     <div style="margin-bottom:.5rem;">${bView}</div>
     <div style="margin-bottom:.5rem;">${NView}</div>
     <div style="margin-bottom:.5rem;">${methodView}</div>
+    <div style="margin-bottom:.5rem;">${fixedXView}</div>
     <div style="margin-top:.6rem;">${presetView}</div>
     <div style="margin-top:1rem;">${display(riemannSummary(expr, a, b, N, method))}</div>
   </div>
   <div class="card" style="min-width:0; overflow:hidden;">
     <h3>Suma Riemannowska</h3>
-    ${display(resize((width) => riemannPlot(expr, a, b, N, method, {width})))}
+    ${display(resize((width) => riemannPlot(expr, a, b, N, method, {width, fixedX})))}
   </div>
 </div>
 
