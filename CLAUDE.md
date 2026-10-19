@@ -10,7 +10,7 @@ Stan: prototyp jednego rozdziału. Walidujemy stack zanim rozbudujemy.
 
 ## Kim jest user
 
-Maciek Karczewski. Wykładowca, prowadzi zajęcia z algebry liniowej i analizy matematycznej na kierunkach niematematycznych. Ma równolegle ekosystem interaktywnych wykładów ze statystyki w R Shiny (`/home/maciek/uczelnia/dydaktyka/warsztat/interaktywne-wyklady`) — ale tamto repo to inny stack i nie miesza się z tym.
+Maciek Karczewski. Wykładowca, prowadzi zajęcia z algebry liniowej i analizy matematycznej na kierunkach niematematycznych. Ma równolegle ekosystem interaktywnych wykładów ze statystyki w R Shiny (`/home/maciek/praca/dydaktyka/narzedzia/interaktywne-wyklady`) — ale tamto repo to inny stack i nie miesza się z tym.
 
 Email git: `maciej.karczewski@upwr.edu.pl`. GitHub: TheMacSquared.
 
